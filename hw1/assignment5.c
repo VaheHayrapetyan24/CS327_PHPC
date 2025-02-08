@@ -11,13 +11,11 @@ int main() {
 	int* c =  malloc(sizeof(int) * 5);
 
 	for (int i = 0; i < 5; ++i) {
-		*(c++) = i;
+		*(c + i) = i;
 		b[i] = i; // just wanted to see if [] notation works on pointers
 
-		printf("%d %d\n", b[i], *(c - 1));
+		printf("%d %d\n", b[i], *c);
 	}
-
-	c -= 5;
 
 	free(a);
 	free(b);
@@ -27,9 +25,9 @@ int main() {
 
 	for (int i = 0; i < 5; ++i) {
 
-                *(b++) = i;
-                *(c++) = i;
+                *c = i;
+                *b = i;
 
-                printf("%d %d\n", *(b - 1), *(c - 1));
+                printf("%d %d\n", *(b++), *(c++));
         }
 }

@@ -1,8 +1,8 @@
 #include <stdio.h>
 
-void print(int* a) {
+void print(int* a, int size) {
 	int* p = a;
-	while (p < a + 5) {
+	while (p < a + size) {
                 printf("%d \n", *(p++));
         }
 }
@@ -11,17 +11,14 @@ void print(int* a) {
 int main() {
 	int a[5] = {1,2,3,4,5};
 	
-	print(a);
+	print(a, 5);
 
 	printf("------------\n");
 
-	*(a) = 5;
-	*(a + 1) = 4;
-	*(a + 2) = 3;
-	*(a + 3) = 2;
-	*(a + 4) = 1;
+	for (int i = 0; i < 5; ++i) 
+		*(a + i) = 5 - i;
 
-	print(a);
+	print(a, 5);
 
 	printf("-----------\n");
 
