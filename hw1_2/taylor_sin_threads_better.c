@@ -4,8 +4,8 @@
 #include <pthread.h>
 #include <time.h>
 
-#define NUM_OF_ITERATIONS 5000000000
-#define NUM_OF_THREADS 50
+#define NUM_OF_ITERATIONS 500000000
+#define NUM_OF_THREADS 10
 #define X 0.3L
 
 struct thread_arguments {
@@ -43,7 +43,7 @@ void* calculate_sum(void* args) {
 
 int main() {
 	struct timespec start, end;
-	clock_gettime(CLOCK_MONOTONIC, &start);
+	clock_gettime(CLOCK_REALTIME, &start);
 
 	pthread_t threads[NUM_OF_THREADS];
 	struct thread_arguments* args[NUM_OF_THREADS];
@@ -72,8 +72,8 @@ int main() {
 
 	printf("sin(%Lf) = %.30Lf\n", X, sum); 
 
-	clock_gettime(CLOCK_MONOTONIC, &end);
+	clock_gettime(CLOCK_REALTIME, &end);
 
 
-	printf("Threads: %3d, Total iterations: %ld, Time: %Lf nanoseconds\n", NUM_OF_THREADS, NUM_OF_ITERATIONS, (long double) (end.tv_sec - start.tv_sec) * 10e9 + (end.tv_nsec - start.tv_nsec));
+	printf("Threads: %3d, Total iterations: %d, Time: %.0f nanoseconds\n", NUM_OF_THREADS, NUM_OF_ITERATIONS, (double) (end.tv_sec - start.tv_sec) * 10e9 + (double) (end.tv_nsec - start.tv_nsec));
 }
