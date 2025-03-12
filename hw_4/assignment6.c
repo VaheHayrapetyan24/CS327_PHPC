@@ -131,42 +131,44 @@ void simd(
 	size_t size
 ) {
 
-	__m128i rs = _mm_set1_epi16(76); // floor(0.299 * 256)
-	__m128i gs = _mm_set1_epi16(150); // floor(0.587 * 256)
-	__m128i bs = _mm_set1_epi16(29); // floor(0.114 * 256)
+	__m256i rs = _mm256_set1_epi16(76); // floor(0.299 * 256)
+	__m256i gs = _mm256_set1_epi16(150); // floor(0.587 * 256)
+	__m256i bs = _mm256_set1_epi16(29); // floor(0.114 * 256)
+
+	__m256i zs = _mm256_setzero_si256();
 
 	int i = 0;
-    for (; i <= size - 16; i += 16) {
-		__m128i u8_r = _mm_loadu_si128((__m128i*)&r[i]);
-		__m128i r_low = _mm_unpacklo_epi8(u8_r, _mm_setzero_si128());
-    	__m128i r_high = _mm_unpackhi_epi8(u8_r, _mm_setzero_si128());
+    for (; i <= size - 16; i += 32) {
+		__m256i u8_r = _mm256_loadu_si256((__m256i*)&r[i]);
+		__m256i r_low = _mm256_unpacklo_epi8(u8_r, zs);
+    	__m256i r_high = _mm256_unpackhi_epi8(u8_r, zs);
 
 
-		__m128i u8_g = _mm_loadu_si128((__m128i*)&g[i]);
-		__m128i g_low = _mm_unpacklo_epi8(u8_g, _mm_setzero_si128());
-    	__m128i g_high = _mm_unpackhi_epi8(u8_g, _mm_setzero_si128());
+		__m256i u8_g = _mm256_loadu_si256((__m256i*)&g[i]);
+		__m256i g_low = _mm256_unpacklo_epi8(u8_g, zs);
+    	__m256i g_high = _mm256_unpackhi_epi8(u8_g, zs);
 
-		__m128i u8_b = _mm_loadu_si128((__m128i*)&b[i]);
-		__m128i b_low = _mm_unpacklo_epi8(u8_b, _mm_setzero_si128());
-    	__m128i b_high = _mm_unpackhi_epi8(u8_b, _mm_setzero_si128());
+		__m256i u8_b = _mm256_loadu_si256((__m128i*)&b[i]);
+		__m256i b_low = _mm256_unpacklo_epi8(u8_b, zs);
+    	__m256i b_high = _mm256_unpackhi_epi8(u8_b, zs);
 
 
-		__m128i res1 = _mm_mullo_epi16(rs, r_low);
-		res1 = _mm_add_epi16(res1, _mm_mullo_epi16(gs, g_low));
-		res1 = _mm_add_epi16(res1, _mm_mullo_epi16(bs, b_low));
+		__m256i res1 = _mm256_mullo_epi16(rs, r_low);
+		res1 = _mm256_add_epi16(res1, _mm256_mullo_epi16(gs, g_low));
+		res1 = _mm256_add_epi16(res1, _mm256_mullo_epi16(bs, b_low));
 		// divide everything by 256: shift 8 bits to right
-		res1 = _mm_srli_epi16(res1, 8);
+		res1 = _mm256_srli_epi16(res1, 8);
 
 
 
-		__m128i res2 = _mm_mullo_epi16(rs, r_high);
-		res2 = _mm_add_epi16(res2, _mm_mullo_epi16(gs, g_high));
-		res2 = _mm_add_epi16(res2, _mm_mullo_epi16(bs, b_high));
-		res2 = _mm_srli_epi16(res2, 8);
+		__m256i res2 = _mm256_mullo_epi16(rs, r_high);
+		res2 = _mm256_add_epi16(res2, _mm256_mullo_epi16(gs, g_high));
+		res2 = _mm256_add_epi16(res2, _mm256_mullo_epi16(bs, b_high));
+		res2 = _mm256_srli_epi16(res2, 8);
 
-		res1 = _mm_packus_epi16(res1, res2);
+		res1 = _mm256_packus_epi16(res1, res2);
 
-        _mm_storeu_si128((__m128i*)&nr[i], res1);
+        _mm256_storeu_si256((__m256i*)&nr[i], res1);
     }
 
     for (; i < size; ++i) {
@@ -183,9 +185,6 @@ int main() {
 
 	uint8_t *nr; // naive results
 	uint8_t *sr; // simd results
-
-	
-
 
     // Read BMP file
     read_bmp("./bigboy.bmp", &header, &info, &r, &g, &b);
