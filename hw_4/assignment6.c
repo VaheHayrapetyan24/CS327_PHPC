@@ -213,5 +213,13 @@ int main() {
     free(r);
     free(g);
     free(b);
+	free(nr);
+    free(sr);
+	r = NULL;
+	g = NULL;
+	b = NULL;
+	nr = NULL;
+	sr = NULL;
+	
     return 0;
 }
