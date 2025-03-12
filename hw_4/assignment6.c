@@ -148,7 +148,7 @@ void simd(
 		__m256i g_low = _mm256_unpacklo_epi8(u8_g, zs);
     	__m256i g_high = _mm256_unpackhi_epi8(u8_g, zs);
 
-		__m256i u8_b = _mm256_loadu_si256((__m128i*)&b[i]);
+		__m256i u8_b = _mm256_loadu_si256((__m256i*)&b[i]);
 		__m256i b_low = _mm256_unpacklo_epi8(u8_b, zs);
     	__m256i b_high = _mm256_unpackhi_epi8(u8_b, zs);
 
