@@ -5,12 +5,11 @@ __global__ void noop() {
 }
 
 __global__ void no_div(int* data, int len) {
-    
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
-    // printf("idx %d\n", idx);
-    if (idx < len) {
-        data[idx] *= 2;
+    if (idx >= len) {
+        return;
     }
+    data[idx] *= 2;
 }
 
 __global__ void diverge(int* data, int len) {
@@ -32,7 +31,7 @@ __global__ void aligned_div(int* data, int len) {
         return;
     }
 
-    if ((idx / warpSize) % 2) {
+    if ((idx / warpSize) % 2 == 1) {
         data[idx] *= 3;
     } else {
         data[idx] *= 2;
@@ -54,16 +53,17 @@ void run_kernel(int* ar, int length, char* name, void (*f)(int*, int)) {
     cudaEventRecord(start);
     f<<<grid, block>>>(ar, length);
     cudaEventRecord(stop);
+
     cudaDeviceSynchronize();
 
     cudaEventElapsedTime(&milliseconds, start, stop);
 
-    printf("%s %d ms\n", name, milliseconds);
+    printf("%s %f ms\n", name, milliseconds);
 }
 
 
 int main () {
-    int length = 1000000;
+    int length = 100000000;
     int size = sizeof(int) * length;
     int* ar = (int*) malloc(size);
 
@@ -81,13 +81,30 @@ int main () {
     cudaMemcpy(ar2, ar1, size, cudaMemcpyDeviceToDevice);
     cudaMemcpy(ar3, ar1, size, cudaMemcpyDeviceToDevice);
 
+    noop<<<10000, 10000>>>();
+
     run_kernel(ar1, length, "no_div", no_div);
     run_kernel(ar2, length, "diverge", diverge);
     run_kernel(ar3, length, "aligned_div", aligned_div);
+
+    int *ar1_r = (int*) malloc(size);
+    int *ar2_r = (int*) malloc(size);
+    int *ar3_r = (int*) malloc(size);
+
+    cudaMemcpy(ar1_r, ar1, size, cudaMemcpyDeviceToHost);
+    cudaMemcpy(ar2_r, ar2, size, cudaMemcpyDeviceToHost);
+    cudaMemcpy(ar3_r, ar3, size, cudaMemcpyDeviceToHost);
+
+    for (int i = 0; i < 50; ++i) {
+        printf("%d %d %d\n", ar1_r[i], ar2_r[i], ar3_r[i]);
+    }
 
     cudaFree(ar1);
     cudaFree(ar2);
     cudaFree(ar3);
 
     free(ar);
+    free(ar1_r);
+    free(ar2_r);
+    free(ar3_r);
 }
