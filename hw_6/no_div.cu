@@ -1,9 +1,5 @@
 #include <stdio.h>
 
-__global__ void noop() {
-    int i = threadIdx.x;
-}
-
 __global__ void no_div(int* data, int len) {
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx >= len) {
@@ -18,7 +14,7 @@ __global__ void diverge(int* data, int len) {
         return;
     }
 
-    if (idx % 2) {
+    if (idx % 2 == 1) {
         data[idx] *= 3;
     } else {
         data[idx] *= 2;
@@ -43,7 +39,7 @@ void run_kernel(int* ar, int length, char* name, void (*f)(int*, int)) {
     float milliseconds = 0;
 
     dim3 grid, block;
-    block = { 256 };
+    block = { 1024 };
     grid = { (length + block.x - 1) / block.x };
 
 
@@ -80,8 +76,6 @@ int main () {
     cudaMemcpy(ar1, ar, size, cudaMemcpyHostToDevice);
     cudaMemcpy(ar2, ar1, size, cudaMemcpyDeviceToDevice);
     cudaMemcpy(ar3, ar1, size, cudaMemcpyDeviceToDevice);
-
-    noop<<<10000, 10000>>>();
 
     run_kernel(ar1, length, "no_div", no_div);
     run_kernel(ar2, length, "diverge", diverge);
