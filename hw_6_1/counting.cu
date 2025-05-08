@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <sys/time.h>
 
-#define XDIM 512
+#define XDIM 256
 #define MUL 4
 
 __host__ __device__ int get_idx(char v) {
@@ -9,25 +9,21 @@ __host__ __device__ int get_idx(char v) {
 }
 
 __global__ void count(char* d_in, int* d_out, int n) {
-    // int idx = threadIdx.x + blockDim.x * blockIdx.x;
-    // TODO: Fix if not multiples of 4
-    // just don't count the last 3, do it in main
-
     __shared__ int res[MUL][XDIM];
 
-
-    // int cur_res[4];
-
     int tid = threadIdx.x;
-
     char* cur_d_in = d_in + XDIM * blockIdx.x * MUL;
 
+    res[0][tid] = 0;
+    res[1][tid] = 0;
+    res[2][tid] = 0;
+    res[3][tid] = 0;
 
     res[get_idx(cur_d_in[tid * MUL])][tid]++;
     res[get_idx(cur_d_in[tid * MUL + 1])][tid]++;
     res[get_idx(cur_d_in[tid * MUL + 2])][tid]++;
     res[get_idx(cur_d_in[tid * MUL + 3])][tid]++;
-    // you'll need to go to 8 if you want to try
+    __syncthreads();
 
     for (int stride = XDIM / 2; stride > 0; stride >>= 1) {
         if (tid < stride) {
@@ -56,7 +52,8 @@ double cpuSecond() {
 }
 
 int main() {
-    int N = 1 << 23;
+    int N = 1 << 25;
+    printf("N = %d\n", N);
     size_t in_size = sizeof(char) * N;
     char *h_in, *d_in;
     int *h_res, *d_res;
@@ -64,14 +61,20 @@ int main() {
     dim3 grid, block;
     block.x = XDIM;
     grid.x = (N + block.x - 1) / (4 * block.x);
+    printf("dimensions<<<%d, %d>>>\n", grid.x, block.x);
 
     size_t out_size = sizeof(int) * grid.x * 4;
     
-    cudaMallocHost(&h_in, in_size);
+    cudaError_t err_host = cudaMallocHost(&h_in, in_size);
+    printf("err host: %s\n", cudaGetErrorString(err_host));
+
+
     h_res = (int*) malloc(out_size);
 
-    cudaMalloc(&d_in, in_size);
-    cudaMalloc(&d_res, out_size);
+    cudaError_t err_in = cudaMalloc(&d_in, in_size);
+    cudaError_t err_out = cudaMalloc(&d_res, out_size);
+
+    printf("err1: %s, err2: %s\n", cudaGetErrorString(err_in), cudaGetErrorString(err_out));
 
     int r;
     for (int i = 0; i < N; ++i) {
@@ -103,7 +106,8 @@ int main() {
 
     count<<<grid, block>>>(d_in, d_res, N);
 
-    cudaDeviceSynchronize();
+    cudaError_t err_sync = cudaDeviceSynchronize();
+    printf("err sync: %s\n", cudaGetErrorString(err_sync));
 
     cudaMemcpy(h_res, d_res, out_size, cudaMemcpyDeviceToHost);
     
@@ -150,21 +154,9 @@ int main() {
     }
     printf("\n");
 
-    // for (int i = 0; i < grid.x * 4; ++i) {
-    //     printf("%d ", h_res[i]);
-    // }
-    // printf("\n");
-
-
-
-
-
-
-
-
-
-
-
-
-
+    free(h_res);
+    cudaFree(h_in);
+    cudaFree(d_in);
+    cudaFree(h_res);
+    cudaFree(d_res);
 }
