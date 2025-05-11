@@ -22,10 +22,8 @@ int main() {
     int N = 1 << 29;
     printf("N = %d\n", N);
     size_t in_size = sizeof(char) * N;
-    size_t out_size = in_size;
 
-    char *h_in, *d_in;
-    char *h_res, *d_res;
+    char *original, *h_in, *d_in; // original is same as h_in at first. h_in is just pinned, and is used to write back the result too
 
     dim3 grid, block;
     block.x = XDIM;
@@ -34,36 +32,42 @@ int main() {
 
     
     cudaError_t err_host = cudaMallocHost(&h_in, in_size);
+    original = (char*) malloc(in_size);
+
+    if (original == NULL) {
+        printf("failed to alloc original");
+    }
     printf("err host: %s\n", cudaGetErrorString(err_host));
 
 
-    h_res = (char*) malloc(out_size);
-
     cudaError_t err_in = cudaMalloc(&d_in, in_size);
-    cudaError_t err_out = cudaMalloc(&d_res, out_size);
 
-    printf("err1: %s, err2: %s\n", cudaGetErrorString(err_in), cudaGetErrorString(err_out));
+    printf("err1: %s\n", cudaGetErrorString(err_in));
 
     int r;
     for (int i = 0; i < N; ++i) {
         r = rand() % 4;
+        char v;
         switch (r)
         {
         case 0:
-            h_in[i] = 'A';
+            v = 'A';
             break;
         case 1:
-            h_in[i] = 'C';
+            v = 'C';
             break;
         case 2:
-            h_in[i] = 'G';
+            v = 'G';
             break;
         case 3:
-            h_in[i] = 'T';
+            v = 'T';
             break;
         default:
             break;
         }
+
+        h_in[i] = v;
+        original[i] = v;
     }
 
     double i_start, i_time;
@@ -77,7 +81,7 @@ int main() {
     cudaError_t err_sync = cudaDeviceSynchronize();
     printf("err sync: %s\n", cudaGetErrorString(err_sync));
 
-    cudaMemcpy(h_res, d_in, out_size, cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_in, d_in, in_size, cudaMemcpyDeviceToHost);
 
     i_time = cpuSecond() - i_start;
 
@@ -85,25 +89,22 @@ int main() {
 
     // ENDS HERE
 
-    char* actual_res = (char*) malloc(out_size);
     i_start = cpuSecond();
     
     for (int i = 0; i < N; ++i) {
-        if(h_in[i] == 'T') h_in[i] = 'U';
+        if(original[i] == 'T') original[i] = 'U';
     }
     i_time = cpuSecond() - i_start;
 
     printf("host took %f s\n", i_time);
 
     for (int i = 0; i < N; ++i) {
-        if (h_in[i] != h_res[i]) {
+        if (h_in[i] != original[i]) {
             printf("wrong results\n");
         }
     }
 
-    free(h_res);
+    free(original);
     cudaFree(h_in);
     cudaFree(d_in);
-    cudaFree(h_res);
-    cudaFree(d_res);
 }
