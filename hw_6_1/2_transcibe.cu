@@ -1,20 +1,15 @@
 #include <stdio.h>
 #include <sys/time.h>
 
-#define XDIM 512
+#define XDIM 256
 
-__host__ __device__ char get_char(char v) {
-    return (v == 'T') * 'U' + (v != 'T') * v;
-}
-
-__global__ void transcribe(char* d_in, char* d_out, int n) {
+__global__ void transcribe(char* d_in, int n) {
     int dimx = blockDim.x; 
-    int ind = dimx * blockIdx.x * 4 + threadIdx.x;
-
-    d_out[ind] = get_char(d_in[ind]);
-    d_out[ind + dimx] = get_char(d_in[ind + dimx]);
-    d_out[ind + 2 * dimx] = get_char(d_in[ind + 2 * dimx]);
-    d_out[ind + 3 * dimx] = get_char(d_in[ind + 3 * dimx]);
+    int ind = 4 * dimx * blockIdx.x + threadIdx.x;
+    if (d_in[ind] == 'T') d_in[ind] = 'U';
+    if (d_in[ind + dimx] == 'T') d_in[ind + dimx] = 'U';
+    if (d_in[ind + 2 * dimx] == 'T') d_in[ind + 2 * dimx] = 'U';
+    if (d_in[ind + 3 * dimx] == 'T') d_in[ind + 3 * dimx] = 'U';
 }
 
 double cpuSecond() {
@@ -24,7 +19,7 @@ double cpuSecond() {
 }
 
 int main() {
-    int N = 1 << 28;
+    int N = 1 << 29;
     printf("N = %d\n", N);
     size_t in_size = sizeof(char) * N;
     size_t out_size = in_size;
@@ -77,12 +72,12 @@ int main() {
     i_start = cpuSecond();
     cudaMemcpy(d_in, h_in, in_size, cudaMemcpyHostToDevice);
 
-    transcribe<<<grid, block>>>(d_in, d_res, N);
+    transcribe<<<grid, block>>>(d_in, N);
 
     cudaError_t err_sync = cudaDeviceSynchronize();
     printf("err sync: %s\n", cudaGetErrorString(err_sync));
 
-    cudaMemcpy(h_res, d_res, out_size, cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_res, d_in, out_size, cudaMemcpyDeviceToHost);
 
     i_time = cpuSecond() - i_start;
 
@@ -90,41 +85,18 @@ int main() {
 
     // ENDS HERE
 
-    
-
     char* actual_res = (char*) malloc(out_size);
     i_start = cpuSecond();
     
     for (int i = 0; i < N; ++i) {
-        actual_res[i] = get_char(h_in[i]);
+        if(h_in[i] == 'T') h_in[i] = 'U';
     }
     i_time = cpuSecond() - i_start;
 
     printf("host took %f s\n", i_time);
 
-
-
-
-    // printf("the string: \n");
-    // for (int i = 0; i < N; ++i) {
-    //     printf("%c", h_in[i]);
-    // }
-    // printf("\n");
-
-    // printf("host results: \n");
-    // for (int i = 0; i < N; ++i) {
-    //     printf("%c", actual_res[i]);
-    // }
-    // printf("\n");
-
-    // printf("device results: \n");
-    // for (int i = 0; i < N; ++i) {
-    //     printf("%c", h_res[i]);
-    // }
-    // printf("\n");
-
     for (int i = 0; i < N; ++i) {
-        if (actual_res[i] != h_res[i]) {
+        if (h_in[i] != h_res[i]) {
             printf("wrong results\n");
         }
     }
