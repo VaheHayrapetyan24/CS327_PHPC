@@ -1,19 +1,29 @@
 #include <stdio.h>
 
 #define BLOCKX 256
-#define ITER 3
+#define ITER 10
 
 
-__global__ void gaussian_blur(float* input, float* output, int n) {
+__global__ void median_filter(int* input, int* output, int n) {
     int ind = blockDim.x * blockIdx.x + threadIdx.x + 1;
 
     if (ind > n) return;
 
     
-    float val = (input[ind - 1] + input[ind + 1]) / 4 + input[ind] / 2;
+    int a = input[ind - 1], b = input[ind], c = input[ind + 1];
+    float val = a + b + c - min(min(a, b), c) - max(max(a, b), c);
 
     __syncthreads();
     output[ind] = val;
+}
+
+
+void print_arr(float* arr, int n) {
+    printf("\n");
+    for (int i = 0; i < n; ++i) {
+        printf("%f ", arr[i]);
+    }
+    printf("\n");
 }
 
 int main() {
@@ -23,15 +33,15 @@ int main() {
     block.x = BLOCKX;
     grid.x = (N + block.x - 3) / block.x;
 
-    float *h_input, *h_output;
-    float *d_input, *d_output;
+    int *h_input, *h_output;
+    int *d_input, *d_output;
 
-    size_t size = sizeof(float) * N;
+    size_t size = sizeof(int) * N;
     cudaMallocHost(&h_input, size);
     cudaMallocHost(&h_output, size);
 
     for (int i = 0; i < N; ++i) {
-        h_input[i] = (float) rand() / rand();
+        h_input[i] = rand() % 1000;
     }
 
     cudaMalloc(&d_input, size);
@@ -40,13 +50,13 @@ int main() {
     cudaMemcpy(d_input, h_input, size, cudaMemcpyHostToDevice);
 
     // On the first iteration this switches
-    float *t1 = d_output, *t2 = d_input;
+    int *t1 = d_output, *t2 = d_input;
     for (int i = 0; i < ITER; ++i) {
-        float *temp = t1;
+        int *temp = t1;
         t1 = t2;
         t2 = temp;
         printf("%p %p\n", t1, t2);
-        gaussian_blur<<<grid, block>>>(t1, t2, N - 1);
+        median_filter<<<grid, block>>>(t1, t2, N - 1);
         cudaDeviceSynchronize();
     }
 
@@ -54,13 +64,13 @@ int main() {
 
     printf("input:\n");
     for (int i = 0; i < N; ++i) {
-        printf(" %f", h_input[i]);
+        printf(" %d", h_input[i]);
     }
     printf("\n");
 
     printf("output:\n");
     for (int i = 0; i < N; ++i) {
-        printf(" %f", h_output[i]);
+        printf(" %d", h_output[i]);
     }
     printf("\n");
 
